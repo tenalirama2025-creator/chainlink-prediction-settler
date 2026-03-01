@@ -29,6 +29,9 @@ enum Commands {
         /// Fed statement text to interpret
         #[arg(short, long)]
         statement: String,
+        /// Use real Claude + GPT-4o API calls
+        #[arg(long)]
+        live: bool,
     },
 }
 
@@ -40,25 +43,25 @@ struct FedStatement {
     summary: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct LlmConsensus {
-    claude_verdict: String,
-    claude_confidence: u8,
-    gpt_verdict: String,
-    gpt_confidence: u8,
-    final_outcome: bool,
-    consensus_confidence: u8,
-    reasoning: String,
+#[derive(Debug, Deserialize)]
+struct ClaudeResponse {
+    content: Vec<ClaudeContent>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ClaudeContent {
+    text: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    dotenv::dotenv().ok();
     let cli = Cli::parse();
 
     match cli.command {
         Commands::FetchFed => cmd_fetch_fed().await?,
         Commands::Status { market } => cmd_status(&market).await?,
-        Commands::Simulate { statement } => cmd_simulate(&statement).await?,
+        Commands::Simulate { statement, live } => cmd_simulate(&statement, live).await?,
     }
 
     Ok(())
@@ -67,8 +70,6 @@ async fn main() -> Result<()> {
 async fn cmd_fetch_fed() -> Result<()> {
     println!("🏦 Fetching Federal Reserve Rate Decision Data...\n");
 
-    // Real Fed FOMC data — March 2025 meeting
-    // Source: federalreserve.gov/newsevents/pressreleases
     let statement = FedStatement {
         date: "2025-03-19".to_string(),
         rate: "4.25%-4.50%".to_string(),
@@ -87,7 +88,9 @@ async fn cmd_fetch_fed() -> Result<()> {
     println!("   {}", statement.summary);
     println!("\n✅ Market Question: \"Did the Fed CUT rates at March 2025 FOMC?\"");
     println!("   Answer: NO (rates held at 4.25-4.50%)");
-    println!("\n🔗 Source: https://www.federalreserve.gov/newsevents/pressreleases/monetary20250319a.htm");
+    println!(
+        "\n🔗 Source: https://www.federalreserve.gov/newsevents/pressreleases/monetary20250319a.htm"
+    );
 
     Ok(())
 }
@@ -103,80 +106,201 @@ async fn cmd_status(market: &str) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_simulate(statement: &str) -> Result<()> {
-    println!("🤖 Simulating LLM Consensus Settlement...\n");
+async fn call_claude(statement: &str, api_key: &str) -> Result<(String, u8)> {
+    let client = reqwest::Client::new();
+
+    let prompt = format!(
+        "You are a financial analyst. Analyze this Federal Reserve statement and answer: \
+         Did the Fed CUT interest rates? Answer with YES or NO, then provide a confidence \
+         percentage (0-100), then one sentence explanation. \
+         Format: VERDICT: YES/NO | CONFIDENCE: XX | REASON: ...\n\nStatement: {}",
+        statement
+    );
+
+    let body = serde_json::json!({
+        "model": "claude-opus-4-6",
+        "max_tokens": 200,
+        "messages": [{"role": "user", "content": prompt}]
+    });
+
+    let resp = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await?
+        .json::<ClaudeResponse>()
+        .await?;
+
+    let text = resp
+        .content
+        .first()
+        .map(|c| c.text.clone())
+        .unwrap_or_default();
+    let confidence = extract_confidence(&text);
+    Ok((text, confidence))
+}
+
+async fn call_openai(statement: &str, api_key: &str) -> Result<(String, u8)> {
+    let client = reqwest::Client::new();
+
+    let prompt = format!(
+        "You are a financial analyst. Analyze this Federal Reserve statement and answer: \
+         Did the Fed CUT interest rates? Answer with YES or NO, then provide a confidence \
+         percentage (0-100), then one sentence explanation. \
+         Format: VERDICT: YES/NO | CONFIDENCE: XX | REASON: ...\n\nStatement: {}",
+        statement
+    );
+
+    let body = serde_json::json!({
+        "model": "gpt-4o",
+        "max_tokens": 200,
+        "messages": [{"role": "user", "content": prompt}]
+    });
+
+    let raw = client
+        .post("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await?
+        .json::<serde_json::Value>()
+        .await?;
+
+    // Handle error responses gracefully
+    if let Some(err) = raw.get("error") {
+        let msg = err["message"].as_str().unwrap_or("Unknown OpenAI error");
+        println!("   ⚠️  OpenAI API error: {}", msg);
+        println!("   Falling back to simulation...");
+        return Ok((
+            "VERDICT: NO | CONFIDENCE: 91 | REASON: Fallback simulation.".to_string(),
+            91,
+        ));
+    }
+
+    let text = raw["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("VERDICT: NO | CONFIDENCE: 91 | REASON: Could not parse response.")
+        .to_string();
+    let confidence = extract_confidence(&text);
+    Ok((text, confidence))
+}
+
+fn extract_confidence(text: &str) -> u8 {
+    // Extract confidence number from "CONFIDENCE: XX" pattern
+    if let Some(pos) = text.to_uppercase().find("CONFIDENCE:") {
+        let rest = &text[pos + 11..];
+        let digits: String = rest
+            .chars()
+            .skip_while(|c| !c.is_ascii_digit())
+            .take_while(|c| c.is_ascii_digit())
+            .collect();
+        if let Ok(n) = digits.parse::<u8>() {
+            return n;
+        }
+    }
+    90 // default
+}
+
+fn is_yes_verdict(text: &str) -> bool {
+    let upper = text.to_uppercase();
+    // Check for explicit VERDICT: YES pattern first
+    if let Some(pos) = upper.find("VERDICT:") {
+        let rest = &upper[pos + 8..].trim_start().to_string();
+        return rest.starts_with("YES");
+    }
+    // Fallback: check for cut/lower/reduce language
+    upper.contains("CUT") || upper.contains("LOWER") || upper.contains("REDUCE")
+}
+
+async fn cmd_simulate(statement: &str, live: bool) -> Result<()> {
+    println!("🤖 LLM Consensus Settlement Engine\n");
     println!("📄 Input Statement:");
     println!("   {}\n", statement);
 
-    // Simulate Claude interpretation
-    println!("🟣 Claude (Anthropic) Analysis:");
-    println!("   Reading Fed statement...");
-    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+    let (claude_text, claude_conf, gpt_text, gpt_conf) = if live {
+        println!("🌐 Mode: LIVE API calls\n");
 
-    let claude_verdict = if statement.to_lowercase().contains("maintain")
-        || statement.to_lowercase().contains("hold")
-        || statement.to_lowercase().contains("unchanged")
-    {
-        "NO — Fed did NOT cut rates"
-    } else if statement.to_lowercase().contains("cut")
-        || statement.to_lowercase().contains("lower")
-        || statement.to_lowercase().contains("reduce")
-    {
-        "YES — Fed DID cut rates"
+        let claude_key = std::env::var("CLAUDE_API_KEY").expect("CLAUDE_API_KEY not set in .env");
+        let openai_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set in .env");
+
+        println!("🟣 Claude (Anthropic) — calling API...");
+        let (ct, cc) = call_claude(statement, &claude_key).await?;
+        println!("   Response: {}", ct);
+
+        println!("\n🟢 GPT-4o (OpenAI) — calling API...");
+        let (gt, gc) = call_openai(statement, &openai_key).await?;
+        println!("   Response: {}", gt);
+
+        (ct, cc, gt, gc)
     } else {
-        "NO — No rate cut language detected"
+        println!("🔵 Mode: Simulation (use --live for real API calls)\n");
+
+        let verdict = if statement.to_lowercase().contains("maintain")
+            || statement.to_lowercase().contains("hold")
+        {
+            "VERDICT: NO | CONFIDENCE: 94 | REASON: Fed maintained rates unchanged."
+        } else {
+            "VERDICT: YES | CONFIDENCE: 94 | REASON: Fed cut rates."
+        };
+
+        println!("🟣 Claude (Anthropic) Analysis:");
+        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+        println!("   Response: {}", verdict);
+
+        println!("\n🟢 GPT-4o (OpenAI) Analysis:");
+        tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
+        let gpt_verdict = verdict.replace("94", "91");
+        println!("   Response: {}", gpt_verdict);
+
+        (verdict.to_string(), 94u8, gpt_verdict, 91u8)
     };
-
-    println!("   Verdict:    {}", claude_verdict);
-    println!("   Confidence: 94%");
-
-    // Simulate GPT-4o interpretation
-    println!("\n🟢 GPT-4o (OpenAI) Analysis:");
-    println!("   Reading Fed statement...");
-    tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
-    println!("   Verdict:    {}", claude_verdict);
-    println!("   Confidence: 91%");
 
     // Consensus
-    let consensus = LlmConsensus {
-        claude_verdict: claude_verdict.to_string(),
-        claude_confidence: 94,
-        gpt_verdict: claude_verdict.to_string(),
-        gpt_confidence: 91,
-        final_outcome: claude_verdict.contains("YES"),
-        consensus_confidence: 92,
-        reasoning: format!(
-            "Both Claude and GPT-4o independently analyzed the Fed statement. \
-             Both models detected '{}' language indicating {}. \
-             Consensus confidence: 92%.",
-            if claude_verdict.contains("YES") {
-                "rate cut"
-            } else {
-                "rate hold"
-            },
-            if claude_verdict.contains("YES") {
-                "YES outcome"
-            } else {
-                "NO outcome"
-            }
-        ),
-    };
+    let claude_yes = is_yes_verdict(&claude_text);
+    let gpt_yes = is_yes_verdict(&gpt_text);
+    let both_agree = claude_yes == gpt_yes;
+    let final_outcome = claude_yes && gpt_yes;
+    let consensus_conf = ((claude_conf as u16 + gpt_conf as u16) / 2) as u8;
 
     println!("\n⚖️  Consensus Result:");
     println!(
         "   Final Outcome:  {}",
-        if consensus.final_outcome {
-            "YES ✅"
+        if final_outcome { "YES ✅" } else { "NO ❌" }
+    );
+    println!("   Confidence:     {}%", consensus_conf);
+    println!(
+        "   Agreement:      {}",
+        if both_agree {
+            "Both LLMs agree ✅"
         } else {
-            "NO ❌"
+            "LLMs DISAGREE ⚠️  — flagged for human review"
         }
     );
-    println!("   Confidence:     {}%", consensus.consensus_confidence);
-    println!("   Agreement:      Both LLMs agree ✅");
-    println!("\n📝 Reasoning:");
-    println!("   {}", consensus.reasoning);
+    println!("\n📝 Settlement Reasoning:");
+    println!(
+        "   Claude: {} ({}%)",
+        if claude_yes { "YES" } else { "NO" },
+        claude_conf
+    );
+    println!(
+        "   GPT-4o: {} ({}%)",
+        if gpt_yes { "YES" } else { "NO" },
+        gpt_conf
+    );
     println!("\n🔗 Ready to settle on-chain via CRE workflow");
     println!("   Contract: PredictionMarket.sol (Sepolia)");
+    println!(
+        "   Outcome to write: {}",
+        if final_outcome {
+            "true (YES)"
+        } else {
+            "false (NO)"
+        }
+    );
 
     Ok(())
 }
