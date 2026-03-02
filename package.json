@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@metamask/sdk": "^0.34.0",
+    "qr": "^0.5.4"
+  }
+}
