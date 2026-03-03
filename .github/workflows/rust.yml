@@ -1,0 +1,30 @@
+name: AI Prediction Market CI
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  build:
+    name: FBA Consensus Engine — Build & Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Rust stable
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy, rustfmt
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+      working-directory: settler
+    - name: Clippy static analysis
+      run: cargo clippy -- -D warnings
+      working-directory: settler
+    - name: Build release
+      run: cargo build --release --verbose
+      working-directory: settler
+    - name: Run tests
+      run: cargo test --verbose
+      working-directory: settler
