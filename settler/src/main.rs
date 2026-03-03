@@ -2,6 +2,8 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 
+mod fba;
+
 /// Prediction Market Settler — Chainlink Convergence Hackathon
 #[derive(Parser)]
 #[command(
@@ -24,6 +26,17 @@ enum Commands {
         #[arg(short, long)]
         market: String,
     },
+
+    /// Run Federated Byzantine Agreement consensus
+    Fba {
+        /// Fed statement to analyze
+        #[arg(short, long)]
+        statement: String,
+        /// Use live API calls
+        #[arg(long)]
+        live: bool,
+    },
+
     /// Simulate LLM consensus settlement (Claude + GPT-4o)
     Simulate {
         /// Fed statement text to interpret
@@ -61,6 +74,7 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::FetchFed => cmd_fetch_fed().await?,
         Commands::Status { market } => cmd_status(&market).await?,
+        Commands::Fba { statement, live } => cmd_fba(&statement, live).await?,
         Commands::Simulate { statement, live } => cmd_simulate(&statement, live).await?,
     }
 
@@ -301,6 +315,72 @@ async fn cmd_simulate(statement: &str, live: bool) -> Result<()> {
             "false (NO)"
         }
     );
+
+    Ok(())
+}
+
+async fn cmd_fba(statement: &str, live: bool) -> Result<()> {
+    println!("🔗 Federated Byzantine Agreement Consensus Engine");
+    println!("   Inspired by Stellar Consensus Protocol (SCP)\n");
+
+    let (claude_text, claude_conf, gpt_text, gpt_conf) = if live {
+        let claude_key = std::env::var("CLAUDE_API_KEY").expect("CLAUDE_API_KEY not set");
+        let openai_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
+
+        println!("🌐 Mode: LIVE API calls\n");
+        println!("🟣 Claude (Anthropic) — calling API...");
+        let (ct, cc) = call_claude(statement, &claude_key).await?;
+        println!("   Response: {}", ct);
+
+        println!("\n🟢 GPT-4o (OpenAI) — calling API...");
+        let (gt, gc) = call_openai(statement, &openai_key).await?;
+        println!("   Response: {}", gt);
+
+        (ct, cc, gt, gc)
+    } else {
+        println!("🔵 Mode: Simulation\n");
+        let verdict = if statement.to_lowercase().contains("maintain")
+            || statement.to_lowercase().contains("hold")
+        {
+            "VERDICT: NO | CONFIDENCE: 94 | REASON: Fed held rates steady."
+        } else {
+            "VERDICT: YES | CONFIDENCE: 94 | REASON: Fed cut rates."
+        };
+        let gpt = verdict.replace("94", "91");
+        println!("🟣 Claude: {}", verdict);
+        println!("🟢 GPT-4o: {}", gpt);
+        (verdict.to_string(), 94u8, gpt, 91u8)
+    };
+
+    // Build FBA nodes with quorum slices
+    let nodes = vec![
+        fba::FbaNode {
+            id: "Claude-opus-4-6".to_string(),
+            verdict: is_yes_verdict(&claude_text),
+            confidence: claude_conf,
+            quorum_slice: vec!["Claude-opus-4-6".to_string(), "GPT-4o".to_string()],
+        },
+        fba::FbaNode {
+            id: "GPT-4o".to_string(),
+            verdict: is_yes_verdict(&gpt_text),
+            confidence: gpt_conf,
+            quorum_slice: vec!["GPT-4o".to_string(), "Claude-opus-4-6".to_string()],
+        },
+    ];
+
+    println!("\n📊 FBA Node Configuration:");
+    for node in &nodes {
+        println!(
+            "   {} → Verdict: {} | Confidence: {}% | Quorum: [{}]",
+            node.id,
+            if node.verdict { "YES" } else { "NO" },
+            node.confidence,
+            node.quorum_slice.join(", ")
+        );
+    }
+
+    let result = fba::fba_consensus(&nodes);
+    fba::print_fba_result(&result);
 
     Ok(())
 }
