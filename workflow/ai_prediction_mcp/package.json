@@ -1,0 +1,17 @@
+{
+  "name": "ai-prediction-mcp",
+  "version": "1.0.0",
+  "description": "FBA Consensus Oracle for Prediction Market Settlement via Chainlink CRE",
+  "main": "main.ts",
+  "scripts": {
+    "simulate": "cre workflow simulate . --target staging-settings"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "latest",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

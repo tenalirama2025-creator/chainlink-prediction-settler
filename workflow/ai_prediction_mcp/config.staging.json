@@ -1,0 +1,9 @@
+{
+  "schedule": "0 */10 * * *",
+  "claudeApiUrl": "https://api.anthropic.com/v1/messages",
+  "openaiApiUrl": "https://api.openai.com/v1/chat/completions",
+  "claudeApiKeySecretName": "CLAUDE_API_KEY",
+  "openaiApiKeySecretName": "OPENAI_API_KEY",
+  "statement": "The Federal Open Market Committee decided to maintain the target range for the federal funds rate at 4-1/4 to 4-1/2 percent. The Committee judges that the risks to achieving its employment and inflation goals are roughly in balance.",
+  "marketAddress": "0x85d9dde3c4c7340cf320bd3c9ab96ffb573db5cd"
+}
