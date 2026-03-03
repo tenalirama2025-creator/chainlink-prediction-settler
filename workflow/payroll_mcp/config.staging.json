@@ -1,0 +1,5 @@
+{
+  "schedule": "0 */10 * * *",
+  "payrollApiUrl": "https://webhook.site/9e605167-0cf1-400e-af23-b552c31883a3",
+  "payrollApiKeySecretName": "PAYROLL_API_KEY"
+}
