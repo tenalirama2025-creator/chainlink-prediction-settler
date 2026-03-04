@@ -60,7 +60,7 @@
 │              ETHEREUM SEPOLIA (Smart Contract)                  │
 │                                                                 │
 │  PredictionMarket.sol                                           │
-│  0x85d9dde3c4c7340cf320bd3c9ab96ffb573db5cd                    │
+│  0xEA856dF995C58DEc18221C907DC221c4487Ae499                    │
 │                                                                 │
 │  Question: "Did the Fed cut rates at March 2025 FOMC?"         │
 │  Settler:  0xb1031bb022C15aCdBE13E7743c66254a60Ea6710          │
@@ -161,7 +161,7 @@ cp .env.example .env
 ./target/debug/settler fetch-fed
 
 # Check deployed contract status
-./target/debug/settler status --market 0x85d9dde3c4c7340cf320bd3c9ab96ffb573db5cd
+./target/debug/settler status --market 0xEA856dF995C58DEc18221C907DC221c4487Ae499
 
 # Simulate FBA consensus (mock LLMs)
 ./target/debug/settler simulate --statement "Did the Fed cut rates at March 2025 FOMC?"
@@ -257,7 +257,7 @@ cre workflow simulate . --target staging-settings
 ## ⛓️ Smart Contract
 
 **Network:** Ethereum Sepolia Testnet  
-**Address:** [`0x85d9dde3c4c7340cf320bd3c9ab96ffb573db5cd`](https://sepolia.etherscan.io/address/0x85d9dde3c4c7340cf320bd3c9ab96ffb573db5cd)  
+**Address:** [`0xEA856dF995C58DEc18221C907DC221c4487Ae499`](https://sepolia.etherscan.io/address/0xEA856dF995C58DEc18221C907DC221c4487Ae499)  
 **Verified:** Sourcify ✅ | Blockscout ✅ | Routescan ✅
 
 **Market Question:** *"Did the Fed cut rates at March 2025 FOMC?"*  
