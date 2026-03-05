@@ -5,6 +5,7 @@
 ![Rust](https://img.shields.io/badge/Rust-1.75+-orange)
 ![CRE](https://img.shields.io/badge/Chainlink-CRE-375BD2)
 ![Network](https://img.shields.io/badge/Network-Sepolia-green)
+[![Blog](https://img.shields.io/badge/dev.to-Blog-0A0A0A?logo=devdotto)](https://dev.to/tenalirama2025/how-i-built-3-chainlink-cre-workflows-in-one-week-fba-oracle-privacy-payroll-defi-4nha)
 
 > **AI-powered prediction market settlement using Federated Byzantine Agreement (FBA) consensus across multiple LLMs — with privacy-preserving payroll, DeFi market intelligence, and on-chain verification via Chainlink CRE.**
 
