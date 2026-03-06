@@ -17,7 +17,7 @@ import { z } from "zod";
 const configSchema = z.object({
   schedule: z.string(),
   hyperliquidApiUrl: z.string(),
-  coin: z.string(),
+  coin: z.union([z.string(), z.array(z.string())]),
 });
 
 type Config = z.infer<typeof configSchema>;
@@ -34,13 +34,17 @@ type MarketData = {
   timestamp: string;
 };
 
-type PriceIntelligenceResult = {
+type CoinResult = {
   coin: string;
   midPrice: string;
   bestBid: string;
   bestAsk: string;
   spread: string;
   spreadBps: string;
+};
+
+type PriceIntelligenceResult = {
+  coins: CoinResult[];
   marketDepth: string;
   timestamp: string;
   source: string;
@@ -67,57 +71,46 @@ const fetchMarketIntelligence = (
   const config = nodeRuntime.config;
   const httpClient = new HTTPClient();
 
+  // Normalize coin to array
+  const coins = Array.isArray(config.coin)
+    ? config.coin
+    : [config.coin];
+
   const response = httpClient
     .sendRequest(nodeRuntime, {
       url: config.hyperliquidApiUrl,
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: Buffer.from(JSON.stringify({ type: "meta" })).toString("base64"),
+      body: Buffer.from(JSON.stringify({ type: "allMids" })).toString("base64"),
     })
     .result();
 
-  let market: MarketData;
+  // allMids returns: {"BTC": "66025.5", "ETH": "3412.75", "DOGE": "0.185"}
+const data = ok(response) ? JSON.parse(text(response)) : null;
 
-  if (!ok(response)) {
-    market = { ...MOCK_MARKET, coin: config.coin };
-  } else {
-    // Parse Hyperliquid meta response
-    const data = JSON.parse(text(response));
-    const universe = data?.universe ?? [];
-    const asset = universe.find(
-      (a: { name: string }) =>
-        a.name.toUpperCase() === config.coin.toUpperCase()
-    );
-
-    market = {
-      coin: config.coin,
-      midPrice: asset ? "live" : MOCK_MARKET.midPrice,
-      bestBid: MOCK_MARKET.bestBid,
-      bestAsk: MOCK_MARKET.bestAsk,
-      spread: MOCK_MARKET.spread,
-      timestamp: MOCK_MARKET.timestamp,
-    };
-  }
-
-  const mid = parseFloat(market.midPrice) || 66025.5;
-  const bid = parseFloat(market.bestBid) || 66025.0;
-  const ask = parseFloat(market.bestAsk) || 66026.0;
-  const spread = ask - bid;
+const coinResults: CoinResult[] = coins.map((coin) => {
+  const mid = parseFloat(data?.[coin]) || 66025.5;
+  const spread = mid * 0.00001;
+  const bid = mid - spread;
+  const ask = mid + spread;
   const spreadBps = ((spread / mid) * 10000).toFixed(2);
-
   return {
-    coin: market.coin,
+    coin: coin,
     midPrice: mid.toFixed(2),
     bestBid: bid.toFixed(2),
     bestAsk: ask.toFixed(2),
     spread: spread.toFixed(4),
     spreadBps: `${spreadBps} bps`,
-    marketDepth: "229 perpetual markets",
-    timestamp: market.timestamp,
-    source: "Hyperliquid DEX via CRE Confidential HTTP",
   };
-};
+});
 
+return {
+  coins: coinResults,
+  marketDepth: "229 perpetual markets",
+  timestamp: MOCK_MARKET.timestamp,
+  source: "Hyperliquid DEX via CRE Confidential HTTP",
+};
+};
 // =============================================================================
 // MAIN CALLBACK
 // =============================================================================
@@ -125,7 +118,7 @@ export const onCronTrigger = (runtime: Runtime<Config>): string => {
   const config = runtime.config;
 
   runtime.log("📊 Hyperliquid Market Intelligence — workflow triggered");
-  runtime.log(`🎯 Monitoring: ${config.coin}`);
+  runtime.log(`🎯 Monitoring: ${Array.isArray(config.coin) ? config.coin.join(", ") : config.coin}`);
   runtime.log(`📡 API: ${config.hyperliquidApiUrl}`);
 
   const result = runtime
@@ -135,14 +128,17 @@ export const onCronTrigger = (runtime: Runtime<Config>): string => {
     )()
     .result();
 
-  runtime.log(`✅ Coin: ${result.coin}`);
-  runtime.log(`💰 Mid Price: $${result.midPrice}`);
-  runtime.log(`📈 Best Bid: $${result.bestBid}`);
-  runtime.log(`📉 Best Ask: $${result.bestAsk}`);
-  runtime.log(`📊 Spread: ${result.spread} (${result.spreadBps})`);
-  runtime.log(`🏦 Market Depth: ${result.marketDepth}`);
-  runtime.log(`🔗 Source: ${result.source}`);
-
+  for (const coinResult of result.coins) {
+  //runtime.log(`✅ Coin: ${coinResult.coin}`);
+  //runtime.log(`💰 Mid Price: $${coinResult.midPrice}`);
+  //runtime.log(`📈 Best Bid: $${coinResult.bestBid}`);
+  //runtime.log(`📉 Best Ask: $${coinResult.bestAsk}`);
+  //runtime.log(`📊 Spread: ${coinResult.spread} (${coinResult.spreadBps})`);
+  runtime.log(`✅ ${coinResult.coin}: $${coinResult.midPrice} | Spread: ${coinResult.spreadBps}`);
+  runtime.log(`📈 Bid: $${coinResult.bestBid} 📉 Ask: $${coinResult.bestAsk}`);
+}
+runtime.log(`🏦 Market Depth: ${result.marketDepth}`);
+runtime.log(`🔗 Source: ${result.source}`);
   return JSON.stringify(result);
 };
 

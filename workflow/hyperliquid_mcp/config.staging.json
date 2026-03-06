@@ -1,5 +1,5 @@
 {
   "schedule": "0 */10 * * *",
   "hyperliquidApiUrl": "https://api.hyperliquid.xyz/info",
-  "coin": "BTC"
+  "coin" : ["BTC", "ETH", "DOGE"]
 }
