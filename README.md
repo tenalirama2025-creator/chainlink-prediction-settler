@@ -1,31 +1,82 @@
-# Chainlink Convergence Hackathon — Prediction Settler
+# Chainlink Prediction Settler
 
-![CI](https://github.com/tenalirama2025-creator/chainlink-prediction-settler/actions/workflows/rust.yml/badge.svg)
-![Solidity](https://img.shields.io/badge/Solidity-0.8.x-blue)
-![Rust](https://img.shields.io/badge/Rust-1.75+-orange)
-![CRE](https://img.shields.io/badge/Chainlink-CRE-375BD2)
-![Network](https://img.shields.io/badge/Network-Sepolia-green)
+[![CI](https://github.com/tenalirama2025-creator/chainlink-prediction-settler/actions/workflows/rust.yml/badge.svg)](https://github.com/tenalirama2025-creator/chainlink-prediction-settler/actions)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.19-363636?logo=solidity)](contracts/PredictionMarket.sol)
+[![Rust](https://img.shields.io/badge/Rust-1.75-orange?logo=rust)](settler/)
+[![Chainlink CRE](https://img.shields.io/badge/Chainlink-CRE-375BD2?logo=chainlink)](workflow/)
+[![Network](https://img.shields.io/badge/Network-Sepolia-6851FF)](https://eth-sepolia.blockscout.com/address/0xEA856dF995C58DEc18221C907DC221c4487Ae499)
 [![Blog](https://img.shields.io/badge/dev.to-Blog-0A0A0A?logo=devdotto)](https://dev.to/tenalirama2025/how-i-built-3-chainlink-cre-workflows-in-one-week-fba-oracle-privacy-payroll-defi-4nha)
+[![Demo Video](https://img.shields.io/badge/YouTube-Demo_Video-red?logo=youtube)](https://youtu.be/YD14xtCYnM0)
+[![CRE Workflows](https://img.shields.io/badge/CRE_Workflows-3_Active-375BD2)](https://chain.link)
+[![Deployment](https://img.shields.io/badge/Deployment-Live-brightgreen)](https://chain.link)
 
-> **AI-powered prediction market settlement using Federated Byzantine Agreement (FBA) consensus across multiple LLMs — with privacy-preserving payroll, DeFi market intelligence, and on-chain verification via Chainlink CRE.**
+> FBA oracle + privacy payroll + DeFi intelligence — 3 CRE workflows on Chainlink
 
----
-
-## 🏆 Prize Tracks
-
-| Track | Amount | How This Project Qualifies |
-|-------|--------|---------------------------|
-| 🎯 Prediction Markets | $16,000 | FBA consensus settles real on-chain predictions using dual-LLM oracles |
-| 🔒 Privacy | $16,000 | `payroll_mcp` — batch hash on-chain, recipient amounts never exposed |
-| 🤖 CRE & AI | $17,000 | 3 production CRE workflows (payroll, hyperliquid, ai_prediction) |
-| ⚖️ Risk & Compliance | $16,000 | FBA Byzantine fault tolerance — human review triggered on LLM disagreement |
-| 📈 DeFi | $16,000 | `hyperliquid_mcp` — live DEX market intelligence via CRE Confidential HTTP |
-
-**Total potential: $81,000+**
+An AI-powered prediction market settlement system applying Stellar's Federated
+Byzantine Agreement (FBA) protocol to multi-LLM oracles for Byzantine
+fault-tolerant on-chain settlement.
 
 ---
 
-## 🏗️ Architecture
+## Quick Start
+
+### Prerequisites
+
+**1. Install Rust:**
+```powershell
+winget install Rustlang.Rust.MSVC
+```
+
+**2. Install Bun:**
+```powershell
+winget install Oven-sh.Bun
+```
+
+**3. Install CRE CLI:**
+```powershell
+bun x cre-setup
+```
+
+**4. Clone and build:**
+```powershell
+git clone https://github.com/tenalirama2025-creator/chainlink-prediction-settler
+cd chainlink-prediction-settler
+cargo build
+```
+
+### Run Everything with One Command
+
+```powershell
+.\deploy.ps1
+```
+
+Interactive menu handles everything:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║     Chainlink Prediction Settler — FBA Consensus Oracle      ║
+║     3 CRE Workflows: FBA Oracle + Privacy Payroll + DeFi     ║
+╚══════════════════════════════════════════════════════════════╝
+
+Select an option:
+
+  [1] Simulate FBA Consensus        (FREE — no API keys needed)
+  [2] Live FBA Consensus             (requires Claude + OpenAI API keys)
+  [3] Run ALL 3 CRE Simulations      (requires CRE CLI)
+  [4] Run payroll_mcp simulation     (requires CRE CLI)
+  [5] Run hyperliquid_mcp — Live DEX prices BTC/ETH/DOGE (requires CRE CLI)
+  [6] Run ai_prediction_mcp simulation (requires CRE CLI)
+  [7] Check contract status          (FREE — no API keys needed)
+  [8] Deploy to CRE                  (requires CRE Early Access)
+  [9] Exit
+```
+
+**Start with Option 1** — free, no API keys, no CRE account needed.
+**Option 3** runs all 3 CRE workflows in sequence automatically.
+
+---
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -35,21 +86,16 @@
 │  │ payroll_mcp  │  │ hyperliquid_mcp  │  │ ai_prediction    │  │
 │  │              │  │                  │  │ _mcp             │  │
 │  │ Privacy-     │  │ DEX Market       │  │ FBA Oracle       │  │
-│  │ preserving   │  │ Intelligence     │  │ Settlement       │  │
-│  │ batch settle │  │ BTC/ETH spreads  │  │ (Claude+GPT-4o)  │  │
+│  │ preserving   │  │ Intelligence     │  │ (Claude+GPT-4o)  │  │
+│  │ batch settle │  │ BTC/ETH spreads  │  │                  │  │
 │  └──────┬───────┘  └────────┬─────────┘  └────────┬─────────┘  │
-│         │                   │                      │            │
 └─────────┼───────────────────┼──────────────────────┼────────────┘
           │                   │                      │
           ▼                   ▼                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    RUST CLI (settler)                           │
-│                                                                 │
-│  fetch-fed → simulate → fba → status                           │
-│                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │              FBA CONSENSUS ENGINE                       │   │
-│  │                                                         │   │
 │  │   Claude Opus ──┐                                       │   │
 │  │                 ├──► Quorum Intersection ──► SETTLE     │   │
 │  │   GPT-4o    ────┘    (Stellar Protocol)    or REVIEW    │   │
@@ -59,268 +105,134 @@
           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              ETHEREUM SEPOLIA (Smart Contract)                  │
-│                                                                 │
 │  PredictionMarket.sol                                           │
 │  0xEA856dF995C58DEc18221C907DC221c4487Ae499                    │
-│                                                                 │
 │  Question: "Did the Fed cut rates at March 2025 FOMC?"         │
-│  Settler:  0xb1031bb022C15aCdBE13E7743c66254a60Ea6710          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔑 Key Innovation: FBA Consensus for LLM Oracles
+## Three CRE Workflows
 
-This project applies **Stellar's Federated Byzantine Agreement protocol** to multi-LLM oracle settlement — a novel approach to making AI-driven on-chain decisions Byzantine fault-tolerant.
+### ai_prediction_mcp — FBA Consensus Oracle
+- Claude Opus and GPT-4o independently evaluate prediction statements
+- FBA engine computes quorum intersection
+- On agreement: auto-settle on-chain
+- On disagreement: autonomous settlement BLOCKED — human review triggered
+- API keys managed at DON level via CRE secrets — never exposed
 
-### Why FBA?
+### payroll_mcp — Privacy-Preserving Settlement
+- Recipient addresses and salary amounts never appear on-chain
+- Only keccak256 batch hash recorded on-chain
+- CRE Confidential Compute keeps all sensitive data private
 
-Traditional oracles rely on a single data source. This project uses FBA to:
-
-- **Eliminate single points of failure** — if one LLM is compromised or hallucinating, the other catches it
-- **Achieve quorum intersection** — settlement only proceeds when both LLMs agree within tolerance
-- **Trigger human review** on disagreement — no silent failures, no wrong settlements
-- **Provide cryptographic audit trail** — every consensus decision is logged with confidence scores
-
-### Live FBA Result (March 2026)
-
-```
-Statement:  "Did the Fed cut rates at March 2025 FOMC?"
-─────────────────────────────────────────────────────
-Claude Opus:   NO  │ 99% confidence
-GPT-4o:        NO  │ 95% confidence
-─────────────────────────────────────────────────────
-FBA Result:    NO  │ 97% confidence
-Quorum:        ✅ INTERSECTED
-Safety:        ✅ CLEARED
-Action:        SETTLE (answer: NO)
-```
+### hyperliquid_mcp — DeFi Market Intelligence
+- Queries 229 Hyperliquid perpetual markets via CRE Confidential HTTP
+- Fetches live prices for BTC, ETH and DOGE simultaneously
+- API credentials managed at DON level — never exposed
+- Built on prior private Hyperliquid project experience
 
 ---
 
-## 📦 Project Structure
+## Live Output Examples
 
+**FBA Consensus:**
 ```
-chainlink-prediction-settler/
-├── .github/workflows/rust.yml      ← CI (GREEN ✅ — 3m 14s)
-├── contracts/
-│   └── PredictionMarket.sol        ← Deployed on Sepolia ✅
-├── settler/src/
-│   ├── main.rs                     ← Rust CLI entry point
-│   └── fba.rs                      ← FBA consensus engine
-└── workflow/
-    ├── payroll_mcp/                ← Privacy track ✅ SIMULATING
-    │   ├── main.ts
-    │   ├── config.staging.json
-    │   ├── workflow.yaml
-    │   ├── project.yaml
-    │   └── secrets.yaml
-    └── hyperliquid_mcp/            ← DeFi track ✅ SIMULATING
-        ├── main.ts
-        ├── config.staging.json
-        ├── workflow.yaml
-        ├── project.yaml
-        └── secrets.yaml
+Statement:    "Did the Fed cut rates at March 2025 FOMC?"
+Claude Opus:  NO  |  99% confidence
+GPT-4o:       NO  |  95% confidence
+FBA Outcome:  NO  |  97% confidence
+Quorum:       ✅ INTERSECTED
+Safety:       ✅ CLEARED
+Action:       SETTLE NO — Fed held rates confirmed
 ```
 
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Rust 1.75+
-- Node.js 18+ / Bun
-- Chainlink CRE CLI
-- Sepolia ETH (for contract interaction)
-
-### 1. Clone & Build
-
-```bash
-git clone https://github.com/tenalirama2025-creator/chainlink-prediction-settler
-cd chainlink-prediction-settler
-
-# Build Rust CLI
-cargo build
+**Hyperliquid DEX Live Prices:**
 ```
+✅ BTC: $68,129.50 | Spread: 0.10 bps
+📈 Bid: $68,128.82 📉 Ask: $68,130.18
 
-### 2. Environment Setup
+✅ ETH: $1,982.65  | Spread: 0.10 bps
+📈 Bid: $1,982.63  📉 Ask: $1,982.67
 
-```bash
-cp .env.example .env
-# Edit .env and add:
-# CLAUDE_API_KEY=your_key
-# OPENAI_API_KEY=your_key
-# CRE_ETH_PRIVATE_KEY=your_key  (optional — for live chain writes)
-```
+✅ DOGE: $0.09     | Spread: 0.10 bps
+📈 Bid: $0.09      📉 Ask: $0.09
 
-### 3. Run Rust CLI (Simulation Mode — No API Keys Needed)
-
-```bash
-# Fetch Fed rate decision data
-./target/debug/settler fetch-fed
-
-# Check deployed contract status
-./target/debug/settler status --market 0xEA856dF995C58DEc18221C907DC221c4487Ae499
-
-# Simulate FBA consensus (mock LLMs)
-./target/debug/settler simulate --statement "Did the Fed cut rates at March 2025 FOMC?"
-
-# Run full FBA pipeline (mock)
-./target/debug/settler fba --statement "Did the Fed cut rates at March 2025 FOMC?"
-```
-
-### 4. Run with Live LLMs (⚠️ Costs API Credits)
-
-```bash
-# Uses real Claude + GPT-4o APIs
-# Claude: ~$0.01–0.05 per run | OpenAI: ~$0.01–0.03 per run
-./target/debug/settler simulate --statement "Did the Fed cut rates at March 2025 FOMC?" --live
-./target/debug/settler fba --statement "Did the Fed cut rates at March 2025 FOMC?" --live
-```
-
-### 5. Run CRE Workflow Simulations
-
-```bash
-# Privacy payroll workflow
-cd workflow/payroll_mcp
-export PAYROLL_API_KEY_VALUE=dev-api-key
-cre workflow simulate . --target staging-settings
-
-# DeFi hyperliquid workflow
-cd workflow/hyperliquid_mcp
-cre workflow simulate . --target staging-settings
-```
-
----
-
-## 🔒 CRE Workflow 1: payroll_mcp (Privacy Track)
-
-**Problem:** Payroll settlement requires processing sensitive salary data. Amounts and recipient addresses must never appear on-chain.
-
-**Solution:** Privacy-preserving batch settlement via CRE Confidential Compute.
-
-- Fetches payroll batch from authenticated API (secret managed by CRE DON)
-- Computes keccak256 hash of the full batch
-- Records **only the hash** on-chain — zero PII exposure
-- Verifiable: anyone can verify batch integrity against the hash
-
-**Simulation Output:**
-```
-✅ Batch: BATCH-2026-03-03-001
-🔑 Hash: 0x4b73dce0...
-👥 Recipients: 3
-💰 Total: $12,700 USD
-🔒 Privacy: recipient_addresses_and_amounts_not_recorded_onchain
-```
-
----
-
-## 📈 CRE Workflow 2: hyperliquid_mcp (DeFi Track)
-
-**Problem:** DeFi protocols need reliable, tamper-resistant price feeds from DEXes without exposing raw HTTP credentials.
-
-**Solution:** Hyperliquid DEX market intelligence via CRE Confidential HTTP.
-
-- Queries Hyperliquid's perpetuals API (229 markets)
-- Computes bid/ask spread and spread in basis points
-- Uses static fallback for deterministic CRE consensus
-- Extensible to trigger on-chain actions based on spread thresholds
-
-**Simulation Output:**
-```
-📊 Coin: BTC
-💰 Mid Price: $66,025.50
-📈 Best Bid: $66,025.00
-📉 Best Ask: $66,026.00
-📊 Spread: 1.0000 (0.15 bps)
 🏦 Market Depth: 229 perpetual markets
 🔗 Source: Hyperliquid DEX via CRE Confidential HTTP
 ```
 
 ---
 
-## 🤖 CRE Workflow 3: ai_prediction_mcp (Prediction Markets + CRE & AI)
-
-**Problem:** Prediction markets need trustworthy, automated settlement without relying on a single centralized oracle.
-
-**Solution:** FBA consensus across Claude Opus and GPT-4o, orchestrated by Chainlink CRE.
-
-- CRE triggers settlement workflow at market expiry
-- Both LLMs independently evaluate the prediction statement
-- FBA engine computes quorum intersection
-- On agreement: auto-settle on-chain
-- On disagreement: pause + trigger human review (Byzantine safety)
-
----
-
-## ⛓️ Smart Contract
-
-**Network:** Ethereum Sepolia Testnet  
-**Address:** [`0xEA856dF995C58DEc18221C907DC221c4487Ae499`](https://sepolia.etherscan.io/address/0xEA856dF995C58DEc18221C907DC221c4487Ae499)  
-**Verified:** Sourcify ✅ | Blockscout ✅ | Routescan ✅
-
-**Market Question:** *"Did the Fed cut rates at March 2025 FOMC?"*  
-**Settler Address:** `0xb1031bb022C15aCdBE13E7743c66254a60Ea6710`  
-**Expiry:** March 19, 2025 18:00 UTC (`1742403600`)
-
----
-
-## ⚙️ CI/CD
-
-GitHub Actions runs on every push:
+## Live FBA Result
 
 ```
-fmt check → clippy lint → build release → test
+Statement:    "Did the Fed cut rates at March 2025 FOMC?"
+Claude Opus:  NO  |  99% confidence
+GPT-4o:       NO  |  95% confidence
+FBA Outcome:  NO  |  97% confidence
+Quorum:       ✅ INTERSECTED
+Safety:       ✅ CLEARED
+Action:       SETTLE NO — Fed held rates confirmed
 ```
 
-Status: ✅ GREEN (passing in ~3m 14s)
+---
+
+## Smart Contract
+
+**PredictionMarket.sol — Ethereum Sepolia**
+
+| Field | Value |
+|-------|-------|
+| Address | [`0xEA856dF995C58DEc18221C907DC221c4487Ae499`](https://eth-sepolia.blockscout.com/address/0xEA856dF995C58DEc18221C907DC221c4487Ae499) |
+| Question | Did the Fed cut rates at March 2025 FOMC? |
+| Network | Ethereum Sepolia Testnet |
+| Verified | Sourcify ✅ Blockscout ✅ Routescan ✅ |
 
 ---
 
-## 💡 Design Decisions
+## Prize Tracks
 
-**Why FBA over simple majority vote?**  
-Stellar's FBA provides quorum intersection guarantees — the network cannot be split by a Byzantine actor. Applied to LLMs, this means a hallucinating or compromised model cannot unilaterally settle a market.
-
-**Why dual LLM (Claude + GPT-4o)?**  
-Diverse model architectures reduce correlated failure risk. If both agree, confidence is high. If they disagree, the disagreement itself is a signal worth investigating.
-
-**Why simulation + live modes?**  
-Graceful degradation — the demo never fails. Judges can verify the full pipeline without incurring API costs unless they choose to.
-
-**Why Fed rate data?**  
-The participant has 25+ years in financial systems (AIG, RBC, Thrivent). This is a domain where accurate, verifiable settlement has real-world stakes.
+| Track | Amount | Qualification |
+|-------|--------|---------------|
+| Prediction Markets | $16,000 | FBA consensus settles real on-chain predictions |
+| Privacy | $16,000 | payroll_mcp — batch hash only, amounts never on-chain |
+| CRE & AI | $17,000 | 3 production CRE workflows running on DON |
+| Risk & Compliance | $16,000 | FBA blocks unsafe settlements — human review triggered |
+| DeFi | $16,000 | hyperliquid_mcp — DEX intelligence via confidential HTTP |
+| **Total** | **$81,000** | |
 
 ---
 
-## 💰 API Cost Transparency
+## Repository Structure
 
-Running `--live` flag makes real API calls:
-
-| Provider | Model | Approx. Cost/Run |
-|----------|-------|-----------------|
-| Anthropic | Claude Opus | ~$0.01–0.05 |
-| OpenAI | GPT-4o | ~$0.01–0.03 |
-
-Simulation mode (`--simulate`, no `--live` flag) is **free** and uses deterministic mock responses. Judges are welcome to run either mode.
-
----
-
-## 🧑‍💻 About the Participant
-
-**Venkateshwar Rao Nagala**  
-25+ years in mainframe and financial systems (AIG, RBC, Thrivent)  
-GATE 1994 AIR 444 | CMU-trained  
-Previous: Solo.io Mainframe Modernization Hackathon ($1K prize)
-
-📧 tenalirama2019@gmail.com  
-📱 +91-9701908080  
-🐙 [github.com/tenalirama2025-creator](https://github.com/tenalirama2025-creator)
+```
+chainlink-prediction-settler/
+├── .github/workflows/     # CI — Rust fmt, clippy, build, test
+├── contracts/             # PredictionMarket.sol (Solidity)
+├── settler/src/           # Rust CLI — main.rs, fba.rs
+├── workflow/
+│   ├── payroll_mcp/       # Privacy-preserving payroll
+│   ├── hyperliquid_mcp/   # DeFi market intelligence
+│   └── ai_prediction_mcp/ # FBA consensus oracle
+├── deploy.ps1             # ← One command to run everything
+└── README.md
+```
 
 ---
 
-## 📄 License
+## Author
 
-MIT
+**Venkateshwar Rao Nagala**
+
+- 📝 Blog: [How I Built 3 Chainlink CRE Workflows in One Week](https://dev.to/tenalirama2025/how-i-built-3-chainlink-cre-workflows-in-one-week-fba-oracle-privacy-payroll-defi-4nha)
+- 🎬 Demo: [Chainlink-Prediction-Settler](https://youtu.be/YD14xtCYnM0)
+- 🐙 GitHub: [tenalirama2025-creator](https://github.com/tenalirama2025-creator)
+- 📧 tenalirama2019@gmail.com
+
+---
+
+*Built with Rust. Orchestrated with Chainlink CRE. Settled on Ethereum Sepolia.*
+
+*From Assembler to blockchain — one late night at a time.* 🚀
